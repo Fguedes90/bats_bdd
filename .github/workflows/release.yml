@@ -116,10 +116,9 @@ jobs:
           cp ../main-repo/packaging/homebrew/bats-bdd.rb Formula/bats-bdd.rb
 
           # Calculate checksums from GitHub releases
-Fguedes90
-Fguedes90
-Fguedes90
-
+          LINUX_SHA=$(curl -sL "https://github.com/Fguedes90/bats-bdd/releases/download/v${VERSION}/bats-bdd-linux-x86_64.tar.gz" | shasum -a 256 | cut -d' ' -f1)
+          MACOS_X86_SHA=$(curl -sL "https://github.com/Fguedes90/bats-bdd/releases/download/v${VERSION}/bats-bdd-macos-x86_64.tar.gz" | shasum -a 256 | cut -d' ' -f1)
+          MACOS_ARM_SHA=$(curl -sL "https://github.com/Fguedes90/bats-bdd/releases/download/v${VERSION}/bats-bdd-macos-aarch64.tar.gz" | shasum -a 256 | cut -d' ' -f1)
           # Replace placeholders
           sed -i "s/PLACEHOLDER_SHA256/$LINUX_SHA/g" Formula/bats-bdd.rb
           # For macOS, replace both occurrences (x86 and arm)
