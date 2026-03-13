@@ -1,0 +1,86 @@
+/// Gherkin grammar for parsing feature files
+
+// Comments
+comment = { "#" ~ (!("\n" | "\r") ~ ANY)* }
+
+// Tags - allow whitespace/newlines between tags
+tag = { "@" ~ (!(" " | "\t" | "\n" | "\r") ~ ANY)* }
+tags = { tag ~ ((" " | "\t" | "\n" | "\r")+ ~ tag)* }
+
+// Feature header
+feature_name = { (!("\n" | "\r") ~ ANY)+ }
+
+// Description - optional indentation
+description_line = { (" " | "\t")* ~ (!("\n" | "\r" | "Scenario:" | "Background:" | "Scenario Outline:" | "Scenario Template:" | "Examples:" | "Scenarios:" | "Rule:" | "@") ~ ANY)+ ~ ("\n" | "\r")* }
+description = { description_line+ }
+
+// DocStrings - support for """ delimited content with optional type
+doc_string_delimiter = { "\"\"\"" }
+doc_string_type = { (!("\n" | "\r" | " ") ~ ANY)+ }
+doc_string_content_line = { (!("\n" | "\r") ~ ANY)* }
+doc_string = {
+    doc_string_delimiter ~ doc_string_type? ~ ("\n" | "\r")
+    ~ (" "* ~ doc_string_content_line ~ ("\n" | "\r"))*
+    ~ " "* ~ doc_string_delimiter
+}
+
+// Data Tables
+table_cell = { (!("|" | "\n" | "\r") ~ ANY)* }
+table_row = { "|" ~ (" "* ~ table_cell ~ " "* ~ "|")+ }
+table = { table_row ~ ("\n" ~ table_row)* }
+
+// Data table for steps
+data_table = { table_row ~ ("\n" ~ " "* ~ table_row)* }
+
+// Steps - indented with keyword, optionally followed by data_table or doc_string
+step_keyword = { "Given" | "When" | "Then" | "And" | "But" | "Dado" | "Quando" | "Então" | "E" | "Mas" }
+step_text = { (!("\n" | "\r") ~ ANY)+ }
+step = { " "* ~ step_keyword ~ " "+ ~ step_text ~ ("\n" | "\r")* ~ (" "* ~ (doc_string | data_table))? }
+
+// Background
+background = {
+    " "* ~ "Background:" ~ " "* ~ (!("\n" | "\r") ~ ANY)* ~ ("\n" | "\r")*
+    ~ (step ~ ("\n" | "\r")*)*
+}
+
+// Scenario
+scenario_name = { (!("\n" | "\r") ~ ANY)+ }
+scenario = {
+    " "* ~ tags? ~ ("\n" | "\r")*
+    ~ " "* ~ "Scenario:" ~ " "+ ~ scenario_name ~ ("\n" | "\r")*
+    ~ (step ~ ("\n" | "\r")*)*
+}
+
+// Scenario Outline
+scenario_outline = {
+    " "* ~ tags? ~ ("\n" | "\r")*
+    ~ " "* ~ ("Scenario Outline:" | "Scenario Template:") ~ " "+ ~ scenario_name ~ ("\n" | "\r")*
+    ~ (step ~ ("\n" | "\r")*)*
+    ~ examples
+}
+
+// Examples and Tables
+examples = {
+    " "* ~ ("Examples:" | "Scenarios:") ~ " "* ~ (!("\n" | "\r") ~ ANY)* ~ ("\n" | "\r")*
+    ~ table
+}
+
+// Rule (Gherkin 6+)
+rule_name = { (!("\n" | "\r") ~ ANY)+ }
+rule = {
+    " "* ~ tags? ~ ("\n" | "\r")*
+    ~ " "* ~ "Rule:" ~ " "+ ~ rule_name ~ ("\n" | "\r")*
+    ~ (("\n" | "\r")* ~ description)?
+    ~ ("\n" | "\r")* ~ background? ~ ("\n" | "\r")*
+    ~ ((scenario | scenario_outline) ~ ("\n" | "\r")*)*
+}
+
+// Main feature rule
+feature = {
+    ((" " | "\n" | "\r") | comment)* ~ tags? ~ ((" " | "\n" | "\r") | comment)*
+    ~ "Feature:" ~ " "+ ~ feature_name
+    ~ (("\n" | "\r")* ~ description)?
+    ~ (("\n" | "\r")* ~ (background | scenario | scenario_outline | rule | comment))*
+    ~ ("\n" | "\r" | " ")*
+    ~ EOI
+}
