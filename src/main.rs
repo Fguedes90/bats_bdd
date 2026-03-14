@@ -41,6 +41,13 @@ enum Commands {
         #[arg(short, long)]
         verbose: bool,
     },
+
+    /// Install the BDD Gherkin skill for better agent guidance
+    InstallSkill {
+        /// Target directory (default: current directory)
+        #[arg(short, long)]
+        directory: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -196,7 +203,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("\n✓ All BATS tests passed!");
             }
         }
+
+        Commands::InstallSkill { directory } => {
+            install_skill(directory)?;
+        }
     }
+
+    Ok(())
+}
+
+fn install_skill(directory: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let target_dir = directory.unwrap_or_else(|| PathBuf::from("."));
+    let omp_skills_dir = target_dir.join(".omp/skills/bdd-gherkin");
+
+    println!(
+        "Installing BDD Gherkin skill to: {}",
+        omp_skills_dir.display()
+    );
+
+    // Create .omp/skills directory structure
+    std::fs::create_dir_all(&omp_skills_dir)?;
+
+    // Get the skill content from the embedded resource
+    let skill_content = include_str!("../skills/bdd-gherkin/SKILL.md");
+
+    // Write the skill file
+    let skill_path = omp_skills_dir.join("SKILL.md");
+    std::fs::write(&skill_path, skill_content)?;
+
+    println!("✓ Skill installed successfully!");
+    println!();
+    println!("The skill is now available at: {}", skill_path.display());
+    println!();
+    println!("To use with Oh My Pi:");
+    println!("  1. Restart Oh My Pi or reload skills");
+    println!("  2. The agent will now have access to BDD/Gherkin guidance");
+    println!();
+    println!("The skill provides:");
+    println!("  - Gherkin syntax reference");
+    println!("  - Writing good scenarios guide");
+    println!("  - bats-bdd usage instructions");
+    println!("  - Step definitions templates");
+    println!("  - Common pitfalls to avoid");
+    println!("  - Checklists for review");
 
     Ok(())
 }

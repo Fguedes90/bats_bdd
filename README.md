@@ -88,6 +88,32 @@ Example with verbose:
 bats-bdd run examples/calculator.feature --verbose
 ```
 
+
+### `install-skill` Command
+
+Installs the BDD Gherkin skill in your project to help agents write better `.feature` files:
+
+```bash
+bats-bdd install-skill
+```
+
+This creates a `.omp/skills/bdd-gherkin/SKILL.md` file that provides:
+
+- Gherkin syntax reference
+- Writing good scenarios guide
+- bats-bdd usage instructions
+- Step definitions templates
+- Common pitfalls to avoid
+- Checklists for review
+
+When used with Oh My Pi, agents will have access to this guidance when working with BDD tests.
+
+You can also specify a target directory:
+
+```bash
+bats-bdd install-skill --directory /path/to/project
+```
+
 ## How It Works
 
 ### 1. Write Your Feature File (Gherkin)
