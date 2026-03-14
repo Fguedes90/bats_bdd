@@ -1,7 +1,7 @@
 #!/bin/sh
 # BATS-BDD Install Script
-# Usage: curl -sSL https://raw.githubusercontent.com/Fguedes90/bats-bdd/main/install.sh | sh
-# Or:   wget -qO- https://raw.githubusercontent.com/Fguedes90/bats-bdd/main/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/Fguedes90/bats-bdd/master/install.sh | sh
+# Or:   wget -qO- https://raw.githubusercontent.com/Fguedes90/bats-bdd/master/install.sh | sh
 
 set -e
 
