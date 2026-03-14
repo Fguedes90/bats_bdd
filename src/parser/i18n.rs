@@ -21,7 +21,7 @@ impl LanguageKeywords {
         Self {
             feature: vec!["Feature".to_string()],
             background: vec!["Background".to_string()],
-            scenario: vec!["Scenario".to_string()],
+            scenario: vec!["Scenario".to_string(), "Example".to_string()],
             scenario_outline: vec![
                 "Scenario Outline".to_string(),
                 "Scenario Template".to_string(),
@@ -40,7 +40,11 @@ impl LanguageKeywords {
         Self {
             feature: vec!["Funcionalidade".to_string(), "Característica".to_string()],
             background: vec!["Contexto".to_string(), "Cenário de Fundo".to_string()],
-            scenario: vec!["Cenário".to_string(), "Caso".to_string()],
+            scenario: vec![
+                "Cenário".to_string(),
+                "Exemplo".to_string(),
+                "Caso".to_string(),
+            ],
             scenario_outline: vec![
                 "Esquema do Cenário".to_string(),
                 "Delineação do Cenário".to_string(),

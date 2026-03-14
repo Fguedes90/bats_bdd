@@ -4,6 +4,10 @@
 
 use crate::parser::ast::{Background, Feature, Scenario, ScenarioOutline, SimpleScenario, Step};
 
+use std::collections::HashSet;
+use std::fs;
+use std::io::{self, BufRead, BufReader, Write};
+use std::path::Path;
 use thiserror::Error;
 
 /// Compile-time errors
@@ -656,5 +660,335 @@ mod tests {
         // Command injection via & or | should be safely quoted
         assert_eq!(quote_bash_arg("valor&rm -rf /"), "'valor&rm -rf /'");
         assert_eq!(quote_bash_arg("valor|comando"), "'valor|comando'");
+    }
+}
+
+/// Step synchronization error
+#[derive(Debug, Error)]
+pub enum SyncError {
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    #[error("Regex error: {0}")]
+    Regex(#[from] regex::Error),
+}
+
+/// Extract all unique step function names from a Feature
+/// This walks through all scenarios, rules, and backgrounds to collect steps
+pub fn extract_step_function_names(feature: &Feature) -> Vec<String> {
+    let mut steps: HashSet<String> = HashSet::new();
+
+    // Extract from background
+    if let Some(background) = &feature.background {
+        for step in &background.steps {
+            steps.insert(step_to_func_name(step));
+        }
+    }
+
+    // Extract from scenarios
+    for scenario in &feature.scenarios {
+        match scenario {
+            Scenario::Simple(s) => {
+                for step in &s.steps {
+                    steps.insert(step_to_func_name(step));
+                }
+            }
+            Scenario::Outline(o) => {
+                for step in &o.steps {
+                    steps.insert(step_to_func_name(step));
+                }
+            }
+        }
+    }
+
+    // Extract from rules
+    for rule in &feature.rules {
+        // Extract from rule background
+        if let Some(background) = &rule.background {
+            for step in &background.steps {
+                steps.insert(step_to_func_name(step));
+            }
+        }
+
+        // Extract from rule scenarios
+        for scenario in &rule.scenarios {
+            match scenario {
+                Scenario::Simple(s) => {
+                    for step in &s.steps {
+                        steps.insert(step_to_func_name(step));
+                    }
+                }
+                Scenario::Outline(o) => {
+                    for step in &o.steps {
+                        steps.insert(step_to_func_name(step));
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort for consistent output
+    let mut sorted: Vec<String> = steps.into_iter().collect();
+    sorted.sort();
+    sorted
+}
+
+/// Parse existing step definitions file and extract function names
+/// Returns a HashSet of function names found in the file
+pub fn parse_existing_steps(steps_path: &Path) -> Result<HashSet<String>, SyncError> {
+    let file = fs::File::open(steps_path)?;
+    let reader = BufReader::new(file);
+
+    let mut steps: HashSet<String> = HashSet::new();
+    let re = regex::Regex::new(r"^([a-z_][a-z0-9_]*)\(\)\s*\{")?;
+
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(caps) = re.captures(&line) {
+            if let Some(name) = caps.get(1) {
+                steps.insert(name.as_str().to_string());
+            }
+        }
+    }
+
+    Ok(steps)
+}
+
+/// Generate a single stub function with the original step text as comment
+pub fn generate_step_stub(func_name: &str, step_text: &str) -> String {
+    format!(
+        "{func_name}() {{\n  # TODO: implement {func_name}\n  # Step text: \"{step_text}\"\n  echo \"TODO: implement {func_name}\" >&2\n  return 1\n}}\n",
+        func_name = func_name,
+        step_text = step_text
+    )
+}
+
+/// Generate stubs for all steps in a feature that don't exist in existing_steps
+/// Returns the new stubs as a string (empty if all steps already exist)
+pub fn generate_new_step_stubs(feature: &Feature, existing_steps: &HashSet<String>) -> String {
+    let all_steps = extract_step_function_names(feature);
+    let mut new_stubs = String::new();
+
+    for step_func_name in all_steps {
+        if !existing_steps.contains(&step_func_name) {
+            // We need to reconstruct the original step text
+            // Since we don't have it stored, use a placeholder comment
+            let stub = generate_step_stub(
+                &step_func_name,
+                &format!(
+                    "[Step matching '{}']",
+                    step_func_name.trim_start_matches("step_")
+                ),
+            );
+            new_stubs.push_str(&stub);
+        }
+    }
+
+    new_stubs
+}
+
+/// Sync step definitions: add missing stubs and detect orphans
+/// Returns (new_steps_added, orphans_found)
+pub fn sync_step_definitions(
+    feature: &Feature,
+    steps_path: &Path,
+) -> Result<(Vec<String>, Vec<String>), SyncError> {
+    let all_steps = extract_step_function_names(feature);
+    let mut new_steps_added: Vec<String> = Vec::new();
+    let mut orphans_found: Vec<String> = Vec::new();
+
+    if !steps_path.exists() {
+        // File doesn't exist - generate full boilerplate
+        let mut content = String::new();
+        content.push_str("#!/usr/bin/env bash\n");
+        content.push_str("# Auto-generated step definitions\n");
+        content.push_str("# Add your step implementations below\n\n");
+
+        for step_func_name in &all_steps {
+            let stub = generate_step_stub(
+                step_func_name,
+                &format!(
+                    "[Step matching '{}']",
+                    step_func_name.trim_start_matches("step_")
+                ),
+            );
+            content.push_str(&stub);
+            new_steps_added.push(step_func_name.clone());
+        }
+
+        let mut file = fs::File::create(steps_path)?;
+        file.write_all(content.as_bytes())?;
+
+        return Ok((new_steps_added, orphans_found));
+    }
+
+    // File exists - parse and merge
+    let existing_steps = parse_existing_steps(steps_path)?;
+
+    // Find new steps needed
+    for step_func_name in &all_steps {
+        if !existing_steps.contains(step_func_name) {
+            new_steps_added.push(step_func_name.clone());
+        }
+    }
+
+    // Find orphans (exist in .bash but not in .feature)
+    for existing_step in &existing_steps {
+        if !all_steps.contains(existing_step) {
+            orphans_found.push(existing_step.clone());
+        }
+    }
+
+    // Append new stubs to existing file
+    if !new_steps_added.is_empty() {
+        let mut file = fs::OpenOptions::new().append(true).open(steps_path)?;
+
+        for step_func_name in &new_steps_added {
+            let stub = generate_step_stub(
+                step_func_name,
+                &format!(
+                    "[Step matching '{}']",
+                    step_func_name.trim_start_matches("step_")
+                ),
+            );
+            file.write_all(stub.as_bytes())?;
+        }
+    }
+
+    Ok((new_steps_added, orphans_found))
+}
+
+#[cfg(test)]
+mod step_sync_tests {
+    use super::*;
+    use crate::parser::ast::*;
+    use std::io::Cursor;
+    use std::io::Read;
+
+    fn create_test_feature() -> Feature {
+        Feature {
+            name: "Test".to_string(),
+            description: None,
+            background: Some(Background {
+                name: None,
+                steps: vec![Step::Given("I have a setup".to_string(), None, None)],
+            }),
+            scenarios: vec![Scenario::Simple(SimpleScenario {
+                name: "Test scenario".to_string(),
+                steps: vec![
+                    Step::Given("I have a calculator".to_string(), None, None),
+                    Step::When("I add 2 and 3".to_string(), None, None),
+                    Step::Then("the result should be 5".to_string(), None, None),
+                ],
+                tags: vec![],
+            })],
+            rules: vec![],
+            tags: vec![],
+            language: None,
+        }
+    }
+
+    #[test]
+    fn test_extract_step_function_names() {
+        let feature = create_test_feature();
+        let names = extract_step_function_names(&feature);
+
+        // Should include background step
+        assert!(names.contains(&"step_given_i_have_a_setup".to_string()));
+        // Should include scenario steps
+        assert!(names.contains(&"step_given_i_have_a_calculator".to_string()));
+        assert!(names.contains(&"step_when_i_add_2_and_3".to_string()));
+        assert!(names.contains(&"step_then_the_result_should_be_5".to_string()));
+    }
+
+    #[test]
+    fn test_extract_step_function_names_no_duplicates() {
+        let feature = Feature {
+            name: "Test".to_string(),
+            description: None,
+            background: None,
+            scenarios: vec![
+                Scenario::Simple(SimpleScenario {
+                    name: "First".to_string(),
+                    steps: vec![Step::Given("I have a value".to_string(), None, None)],
+                    tags: vec![],
+                }),
+                Scenario::Simple(SimpleScenario {
+                    name: "Second".to_string(),
+                    steps: vec![Step::Given("I have a value".to_string(), None, None)],
+                    tags: vec![],
+                }),
+            ],
+            rules: vec![],
+            tags: vec![],
+            language: None,
+        };
+
+        let names = extract_step_function_names(&feature);
+        // Should only have one occurrence of the duplicate step
+        assert_eq!(names.len(), 1);
+        assert!(names.contains(&"step_given_i_have_a_value".to_string()));
+    }
+
+    #[test]
+    fn test_generate_step_stub() {
+        let stub = generate_step_stub("step_given_test", "Given I have a test");
+        assert!(stub.contains("step_given_test() {"));
+        assert!(stub.contains("# TODO: implement step_given_test"));
+        assert!(stub.contains("# Step text: \"Given I have a test\""));
+        assert!(stub.contains("echo \"TODO: implement step_given_test\" >&2"));
+        assert!(stub.contains("return 1"));
+    }
+
+    #[test]
+    fn test_generate_new_step_stubs() {
+        let feature = create_test_feature();
+        let mut existing: HashSet<String> = HashSet::new();
+        existing.insert("step_given_i_have_a_calculator".to_string());
+        // This step exists, so it should not be in the new stubs
+
+        let new_stubs = generate_new_step_stubs(&feature, &existing);
+
+        // Should contain the background step (new)
+        assert!(new_stubs.contains("step_given_i_have_a_setup"));
+        // Should contain the then step (new)
+        assert!(new_stubs.contains("step_then_the_result_should_be_5"));
+        // Should contain the when step (new)
+        assert!(new_stubs.contains("step_when_i_add_2_and_3"));
+        // Should NOT contain the existing step
+        assert!(!new_stubs.contains("step_given_i_have_a_calculator"));
+    }
+
+    #[test]
+    fn test_parse_existing_steps() {
+        let content = r#"
+#!/usr/bin/env bash
+step_given_test1() {
+  echo "test1"
+}
+step_when_test2() {
+  echo "test2"
+}
+# This is a comment
+step_then_test3() {
+  echo "test3"
+}
+"#;
+        let cursor = Cursor::new(content);
+        let mut reader = BufReader::new(cursor);
+        let mut content_with_newlines = String::new();
+        reader.read_to_string(&mut content_with_newlines).unwrap();
+
+        // Write to temp file
+        let temp_path = "/tmp/test_steps_parse.bash";
+        std::fs::write(temp_path, &content_with_newlines).unwrap();
+
+        let steps = parse_existing_steps(Path::new(temp_path)).unwrap();
+        assert!(steps.contains("step_given_test1"));
+        assert!(steps.contains("step_when_test2"));
+        assert!(steps.contains("step_then_test3"));
+        assert_eq!(steps.len(), 3);
+
+        // Cleanup
+        std::fs::remove_file(temp_path).ok();
     }
 }

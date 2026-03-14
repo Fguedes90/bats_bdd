@@ -114,22 +114,23 @@ install_binary() {
     # Ensure install directory exists
     mkdir -p "$INSTALL_DIR"
 
-    # Check if binary exists
-    if [ -f "${INSTALL_DIR}/bats-bdd" ] && [ "$FORCE" != "true" ]; then
-        log_warn "Binary already exists at ${INSTALL_DIR}/bats-bdd"
-        log_warn "Set FORCE=true to overwrite"
-        rm -rf "$TMPDIR"
-        exit 1
+    # Check if binary exists and update it
+    UPDATE=false
+    if [ -f "${INSTALL_DIR}/bats-bdd" ]; then
+        UPDATE=true
+        log_info "Updating existing binary at ${INSTALL_DIR}/bats-bdd"
     fi
 
     # Install
     cp "$BINARY" "${INSTALL_DIR}/bats-bdd"
     chmod +x "${INSTALL_DIR}/bats-bdd"
-
-    # Cleanup
     rm -rf "$TMPDIR"
 
-    log_info "Installed successfully to ${INSTALL_DIR}/bats-bdd"
+    if [ "$UPDATE" = "true" ]; then
+        log_info "Updated successfully at ${INSTALL_DIR}/bats-bdd"
+    else
+        log_info "Installed successfully to ${INSTALL_DIR}/bats-bdd"
+    fi
 
     # Verify
     if "${INSTALL_DIR}/bats-bdd" --help >/dev/null 2>&1; then

@@ -91,6 +91,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "predicates",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",

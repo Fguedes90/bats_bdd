@@ -213,13 +213,55 @@ bats-bdd run my.feature --steps my-steps.bash
 
 ### Command Options
 
-| Option | Description |
-|--------|-------------|
-| `-s, --steps <FILE>` | Step definitions file (default: `step_definitions.bash`) |
-| `-o, --output <DIR>` | Output directory for generated `.bats` file |
-| `-v, --verbose` | Show generated BATS code |
+TV:| `-v, --verbose` | Show generated BATS code |
+TH:| `-p, --parallel` | Run BATS tests in parallel |
 
-### Installing the BDD Skill
+YZ:### Running Directory of Features
+
+QZ:bats-bdd can process multiple `.feature` files in a directory:
+
+```bash
+# Run all .feature files in a directory
+bats-bdd run features/
+
+# With parallel execution
+bats-bdd run features/ --parallel
+
+# With custom output directory
+bats-bdd run features/ -o output/
+```
+
+RP:### Automatic File Generation
+
+KB:**You only need to write `.feature` files!**
+
+VB:bats-bdd automatically:
+SB:1. Generates `.bats` test files from each `.feature`
+QF:2. Creates `step_definitions.bash` with TODO stubs for missing steps
+FM:3. Updates existing stubs (doesn't duplicate)
+
+HV:**Workflow for agents:**
+
+```bash
+1. Write only the .feature file(s)
+2. Run: bats-bdd run features/
+3. bats-bdd generates:
+   - feature.bats (test file)
+   - step_definitions.bash (with TODO stubs)
+4. Run the tests to verify they FAIL with TODO messages
+5. Implement the TODO stubs in step_definitions.bash
+6. Run tests again to verify they PASS
+```
+
+HQ:### Idempotency
+
+KN:bats-bdd is **idempotent** - running it multiple times is safe:
+SZ:- If no `.feature` files changed, no files are modified
+XZ:- Step definitions are only added for NEW steps
+QF:- Existing step implementations are preserved
+QF:- Duplicate step definitions are not created
+
+BW:### Installing the BDD Skill
 
 To install this skill in your project for better agent guidance:
 
