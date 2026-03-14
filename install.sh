@@ -1,11 +1,11 @@
 #!/bin/sh
 # BATS-BDD Install Script
-# Usage: curl -sSL https://raw.githubusercontent.com/Fguedes90/bats-bdd/master/install.sh | sh
-# Or:   wget -qO- https://raw.githubusercontent.com/Fguedes90/bats-bdd/master/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/Fguedes90/bats_bdd/master/install.sh | sh
+# Or:   wget -qO- https://raw.githubusercontent.com/Fguedes90/bats_bdd/master/install.sh | sh
 
 set -e
 
-REPO="Fguedes90/bats-bdd"
+REPO="Fguedes90/bats_bdd"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 FORCE="${FORCE:-false}"
 
