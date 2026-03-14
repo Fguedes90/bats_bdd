@@ -3,6 +3,6 @@
 //! This library provides Gherkin parsing and step execution capabilities
 //! to enable Behavior-Driven Development with BATS.
 
-pub mod parser;
-pub mod compiler;
 pub mod bats;
+pub mod compiler;
+pub mod parser;

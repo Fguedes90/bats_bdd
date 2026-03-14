@@ -7,16 +7,16 @@ class BatsBdd < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/Fguedes90/bats-bdd/releases/download/vVERSION/bats-bdd-macos-aarch64.tar.gz"
-      sha256 "PLACEHOLDER_SHA256"
+      sha256 "MACOS_ARM_SHA_PLACEHOLDER"
     else
       url "https://github.com/Fguedes90/bats-bdd/releases/download/vVERSION/bats-bdd-macos-x86_64.tar.gz"
-      sha256 "PLACEHOLDER_SHA256"
+      sha256 "MACOS_X86_SHA_PLACEHOLDER"
     end
   end
 
   on_linux do
     url "https://github.com/Fguedes90/bats-bdd/releases/download/vVERSION/bats-bdd-linux-x86_64.tar.gz"
-    sha256 "PLACEHOLDER_SHA256"
+    sha256 "LINUX_SHA_PLACEHOLDER"
   end
 
   def install

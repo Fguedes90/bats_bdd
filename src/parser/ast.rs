@@ -17,10 +17,10 @@ pub struct Feature {
 pub struct Rule {
     pub name: String,
     pub description: Option<String>,
+    pub background: Option<Background>,
     pub scenarios: Vec<Scenario>,
     pub tags: Vec<String>,
 }
-
 
 /// Represents a Gherkin Background
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

@@ -1,5 +1,5 @@
 Feature: System command execution
-  Test that system steps correctly extract regex capture groups
+  Test system steps with command execution and output validation
 
   Background:
     Given I run the command `echo "background setup"`

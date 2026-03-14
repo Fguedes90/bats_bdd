@@ -43,12 +43,12 @@ fn test_parse_feature() {
         }
     }
     assert!(result.is_ok(), "Parser should succeed");
-    
+
     let feature = result.unwrap();
     assert_eq!(feature.name, "Basic Calculator");
     assert!(feature.description.is_some());
     assert_eq!(feature.scenarios.len(), 1);
-    
+
     // Access the scenario properly through the enum
     match &feature.scenarios[0] {
         bats_bdd_rust::parser::ast::Scenario::Simple(simple) => {
